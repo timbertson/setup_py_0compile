@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type='text/xsl' href='interface.xsl'?>
+<interface xmlns="http://zero-install.sourceforge.net/2004/injector/interface" xmlns:compile="http://zero-install.sourceforge.net/2006/namespaces/0compile" xmlns:release="http://zero-install.sourceforge.net/2007/namespaces/0release">
+	<name>setup_py_0compile</name>
+	<summary>setup.py wrapper for 0compile</summary>
+	<publish xmlns="http://gfxmonk.net/dist/0install" mode="ignore"/>
+	<description>
+Runs `setup.py install` appropriate for 0compile,
+removing any version or arch-specific paths.
+	</description>
+	<feed-for interface="http://gfxmonk.net/dist/0install/setup_py_0compile.xml"/>
+	<group>
+		<command name="run" path="setup_py_0compile">
+			<runner interface="http://repo.roscidus.com/python/python"/>
+		</command>
+		<requires interface="http://repo.roscidus.com/python/python"/>
+		<requires interface="http://gfxmonk.net/dist/0install/python-genscripts.xml">
+			<executable-in-path name="python-genscripts"/>
+		</requires>
+		<environment insert="" mode="prepend" name="PATH"/>
+		<implementation version="{version}" released="{date}">
+			<manifest-digest/>
+			<archive href="{archive}"/>
+		</implementation>
+	</group>
+</interface>
