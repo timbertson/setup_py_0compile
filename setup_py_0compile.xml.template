@@ -14,11 +14,12 @@ removing any version or arch-specific paths.
 			<runner interface="http://repo.roscidus.com/python/python"/>
 		</command>
 		<requires interface="http://repo.roscidus.com/python/python"/>
+		<requires interface="http://gfxmonk.net/dist/0install/python-setuptools.xml"/>
 		<requires interface="http://gfxmonk.net/dist/0install/python-genscripts.xml">
 			<executable-in-path name="python-genscripts"/>
 		</requires>
 		<environment insert="" mode="prepend" name="PATH"/>
-		<implementation version="{version}" released="{date}">
+		<implementation version="{version}">
 			<manifest-digest/>
 			<archive href="{archive}"/>
 		</implementation>
