@@ -27,17 +27,30 @@ if not os.path.exists(expected_lib_path): os.makedirs(expected_lib_path)
 os.environ['ROOT'] = expected_lib_path
 os.environ['PYTHONPATH'] = os.pathsep.join(pythonpath)
 
-help_proc = subprocess.Popen([sys.executable, 'setup.py', '--help', 'install'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-help_text, _ = help_proc.communicate()
-help_text = help_text.decode('ASCII', 'ignore')
-if 'single-version-externally-managed' in help_text:
+def use_single_version_externally_managed():
 	check_call([sys.executable, 'setup.py', '-v', 'install', '--root', os.environ['DISTDIR'], '--single-version-externally-managed'])
-elif 'install-layout' in help_text:
+
+def use_install_layout():
 	check_call([sys.executable, 'setup.py', '-v', 'install', '--prefix', os.environ['DISTDIR'], '--install-layout=deb'])
+
+with open('setup.py') as f:
+	setup_contents = f.read()
+
+if 'setup_requires' in setup_contents:
+	# XXX setuptools is completely mental if you specify setup_requires - we can't even get `--help` output. Just guess.
+	use_single_version_externally_managed()
 else:
-	sys.stdout.write(help_text)
-	sys.stdout.write("Couldn't detect what kind of setuptools madness is required.\n")
-	sys.exit(1)
+	help_proc = subprocess.Popen([sys.executable, 'setup.py', '--help', 'install'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+	help_text, _ = help_proc.communicate()
+	help_text = help_text.decode('ASCII', 'ignore')
+	if 'single-version-externally-managed' in help_text:
+		use_single_version_externally_managed()
+	elif 'install-layout' in help_text:
+		use_install_layout()
+	else:
+		sys.stdout.write(help_text)
+		sys.stdout.write("Couldn't detect what flag to give setuptools to produce a non-versioned output path.\n")
+		sys.exit(1)
 os.chdir(os.environ['DISTDIR'])
 
 python_dir = (
