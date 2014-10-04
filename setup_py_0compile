@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from __future__ import print_function
 import os, sys, subprocess, shutil, glob, stat
 import logging
 def check_call(cmd, *a, **k):
@@ -6,8 +7,11 @@ def check_call(cmd, *a, **k):
 	return subprocess.check_call(cmd, *a, **k)
 
 logging.basicConfig(level=logging.DEBUG)
-os.chdir(os.environ['BUILDDIR'])
-for root, dirs, files in os.walk(os.environ['BUILDDIR']):
+BUILDDIR = os.environ['BUILDDIR']
+DISTDIR = os.environ['DISTDIR']
+
+os.chdir(BUILDDIR)
+for root, dirs, files in os.walk(BUILDDIR):
 	for f in list(files) + list(dirs):
 		path = os.path.join(root, f)
 		current_mode = os.stat(path).st_mode
@@ -20,7 +24,7 @@ pythonpath = os.environ.get('PYTHONPATH', '').split(os.pathsep)
 version_info = sys.version_info[:2]
 
 # this is for unix. windows might be different:
-expected_lib_path = os.path.join(os.environ['DISTDIR'], 'lib','python%s.%s' % (version_info), 'site-packages')
+expected_lib_path = os.path.join(DISTDIR, 'lib','python%s.%s' % (version_info), 'site-packages')
 pythonpath.append(expected_lib_path)
 if not os.path.exists(expected_lib_path): os.makedirs(expected_lib_path)
 # print("pythonpath set to: %r" % (pythonpath), file=sys.stderr)
@@ -28,10 +32,10 @@ os.environ['ROOT'] = expected_lib_path
 os.environ['PYTHONPATH'] = os.pathsep.join(pythonpath)
 
 def use_single_version_externally_managed():
-	check_call([sys.executable, 'setup.py', '-v', 'install', '--root', os.environ['DISTDIR'], '--single-version-externally-managed'])
+	check_call([sys.executable, 'setup.py', '-v', 'install', '--root', DISTDIR, '--single-version-externally-managed'])
 
 def use_install_layout():
-	check_call([sys.executable, 'setup.py', '-v', 'install', '--prefix', os.environ['DISTDIR'], '--install-layout=deb'])
+	check_call([sys.executable, 'setup.py', '-v', 'install', '--prefix', DISTDIR, '--install-layout=deb'])
 
 with open('setup.py') as f:
 	setup_contents = f.read()
@@ -51,7 +55,7 @@ else:
 		sys.stdout.write(help_text)
 		sys.stdout.write("Couldn't detect what flag to give setuptools to produce a non-versioned output path.\n")
 		sys.exit(1)
-os.chdir(os.environ['DISTDIR'])
+os.chdir(DISTDIR)
 
 python_dir = (
 		glob.glob('lib/python*/site-packages')
@@ -68,6 +72,27 @@ if os.path.exists('usr/bin') and not os.path.exists('bin'):
 	shutil.move('usr/bin', 'bin')
 
 ENTRY_POINTS = 'entry_points.txt'
-for root, dirs, files in os.walk(os.environ['DISTDIR']):
-	if 'egg-info' in root and ENTRY_POINTS in files:
-		check_call(['python-genscripts', '-i', os.path.join(root, ENTRY_POINTS), '-d', 'bin'])
+NAMESPACE_PACKAGES = 'namespace_packages.txt'
+for root, dirs, files in os.walk(DISTDIR):
+	if 'egg-info' in root:
+		if ENTRY_POINTS in files:
+			check_call(['python-genscripts', '-i', os.path.join(root, ENTRY_POINTS), '-d', 'bin'])
+
+		if NAMESPACE_PACKAGES in files and sys.version_info < (3,3):
+			print("Manually installing namespace package files...")
+			with open(os.path.join(root, NAMESPACE_PACKAGES)) as f:
+				pkgs = list(filter(None, map(lambda s: s.strip(), f.readlines())))
+				for pkg in pkgs:
+					#XXX test on nested namespaces
+					pkg = pkg.replace('.', os.path.sep)
+					source_file = os.path.join(BUILDDIR, pkg, '__init__.py')
+					dest_file = os.path.join(DISTDIR, 'lib', pkg, '__init__.py')
+					if not os.path.exists(source_file):
+						print("WARN: no such file: %s" % (source_file,))
+						continue
+					if os.path.exists(dest_file):
+						print("WARN: dest file already exists - skipping: %s" % (dest_file,))
+						continue
+					print("Copying %s -> %s" % (source_file, dest_file))
+					shutil.copyfile(source_file, dest_file)
+
